@@ -27,6 +27,32 @@ def env_list(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def resolve_database_url() -> str:
+    """Pick a Postgres URL from env (Railway, Docker Compose, or local .env).
+
+    Railway: link Postgres to the backend service so ``DATABASE_URL`` is injected.
+    Use **Variables → Add Reference → Postgres → DATABASE_URL** (not an empty manual var).
+    Falls back to ``DATABASE_PRIVATE_URL`` or ``PG*`` / ``POSTGRES_*`` components.
+    """
+    local_default = "postgres://booktracker:booktracker@localhost:5432/booktracker"
+
+    for key in ("DATABASE_URL", "DATABASE_PRIVATE_URL"):
+        url = os.environ.get(key, "").strip()
+        # Skip empty values and unresolved Railway template placeholders.
+        if url and not url.startswith("${"):
+            return url
+
+    pg_host = os.environ.get("PGHOST") or os.environ.get("POSTGRES_HOST")
+    if pg_host:
+        user = os.environ.get("PGUSER") or os.environ.get("POSTGRES_USER", "postgres")
+        password = os.environ.get("PGPASSWORD") or os.environ.get("POSTGRES_PASSWORD", "")
+        database = os.environ.get("PGDATABASE") or os.environ.get("POSTGRES_DB", "railway")
+        port = os.environ.get("PGPORT") or os.environ.get("POSTGRES_PORT", "5432")
+        return f"postgres://{user}:{password}@{pg_host}:{port}/{database}"
+
+    return local_default
+
+
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-insecure-secret-key-change-me")
 DEBUG = env_bool("DJANGO_DEBUG", True)
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0")
@@ -90,11 +116,9 @@ ASGI_APPLICATION = "config.asgi.application"
 
 DATABASES = {
     "default": dj_database_url.config(
-        default=os.environ.get(
-            "DATABASE_URL",
-            "postgres://booktracker:booktracker@localhost:5432/booktracker",
-        ),
+        default=resolve_database_url(),
         conn_max_age=600,
+        conn_health_checks=True,
     )
 }
 
