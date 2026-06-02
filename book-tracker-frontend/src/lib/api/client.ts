@@ -1,9 +1,15 @@
 import axios, { AxiosError } from 'axios'
 
-/** Empty in production = same-origin ``/api`` (Vercel proxy). Local dev uses localhost:8000. */
-const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ??
-  (import.meta.env.PROD ? '' : 'http://localhost:8000')
+/** Production fallback when VITE_API_BASE_URL is unset (signed CSRF supports cross-origin). */
+const PRODUCTION_API = 'https://book-tracker-production-d6a1.up.railway.app'
+
+function resolveBaseUrl(): string {
+  const env = import.meta.env.VITE_API_BASE_URL?.trim()
+  if (env) return env.replace(/\/$/, '')
+  return import.meta.env.PROD ? PRODUCTION_API : 'http://localhost:8000'
+}
+
+const BASE_URL = resolveBaseUrl()
 
 /**
  * Shared Axios instance.
@@ -48,6 +54,26 @@ api.interceptors.request.use((config) => {
     }
   }
   return config
+})
+
+api.interceptors.response.use((response) => {
+  const contentType = response.headers['content-type'] ?? ''
+  if (
+    contentType.includes('text/html') &&
+    typeof response.data === 'string' &&
+    response.data.includes('<!doctype html')
+  ) {
+    return Promise.reject(
+      new AxiosError(
+        'API misconfigured: received the app page instead of JSON. Set VITE_API_BASE_URL to your Railway backend URL on Vercel.',
+        AxiosError.ERR_BAD_RESPONSE,
+        response.config,
+        response.request,
+        response,
+      ),
+    )
+  }
+  return response
 })
 
 /** Shape of DRF validation error responses: `{ field: [messages] }`. */

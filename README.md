@@ -572,7 +572,7 @@ Swagger: `https://your-app.up.railway.app/api/docs/`
 
 | Variable | Value |
 |----------|-------|
-| `VITE_API_BASE_URL` | **Leave unset** — the app calls same-origin `/api`, proxied to Railway via [`vercel.json`](book-tracker-frontend/vercel.json). Do **not** set this to the Railway URL. |
+| `VITE_API_BASE_URL` | **Optional** — defaults to the Railway backend URL baked into the build. Override only if your backend URL differs. |
 | `VITE_GOOGLE_CLIENT_ID` | Your Google OAuth client ID (optional) |
 
 5. Deploy → open your Vercel URL → **Try the demo account**.

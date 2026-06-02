@@ -59,13 +59,17 @@ export function StatsCards({ stats }: { stats: DashboardStats }) {
       />
       <StatCard
         label="Avg rating"
-        value={stats.average_rating !== null ? stats.average_rating.toFixed(1) : '—'}
+        value={
+          stats.average_rating != null && !Number.isNaN(stats.average_rating)
+            ? stats.average_rating.toFixed(1)
+            : '—'
+        }
         icon={Star}
         to="/library?rating=rated&sort=rating"
       />
       <StatCard
         label="Pages read"
-        value={stats.total_pages_read.toLocaleString()}
+        value={(stats.total_pages_read ?? 0).toLocaleString()}
         icon={BookMarked}
         to="/library?status=finished&sort=pages"
       />
