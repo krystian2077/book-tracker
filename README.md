@@ -681,7 +681,6 @@ AI coding assistants (Cursor) were used as a **pair-programming tool**, not as a
 
 <div align="center">
 
-**Built as a recruitment task submission — prioritising structure, reasoning, and verifiable quality over checkbox completeness.**
 
 ⭐ *If you're reviewing this: start the demo account, search for "Dune", open a book, add a note, and try the ISBN lookup tab.*
 
