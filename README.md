@@ -48,8 +48,6 @@
 | **App (Vercel)** | https://book-tracker-teal-nine.vercel.app/ |
 | **Swagger UI** | https://book-tracker-teal-nine.vercel.app/api/docs/ |
 | **API health** | https://book-tracker-teal-nine.vercel.app/api/health/ |
-| **Backend (Railway)** | https://book-tracker-production-d6a1.up.railway.app |
-| **Repository** | https://github.com/krystian2077/book-tracker |
 
 **Demo login:** `demo` / `DemoPassword123!` (or **Try the demo account** on the sign-in screen).
 
@@ -795,7 +793,6 @@ I used **Cursor** (AI-assisted IDE) as a **pair-programming colleague** — not 
 
 <div align="center">
 
-**Built as a recruitment task submission — structure, tests, and production deploy included.**
 
 ⭐ *Reviewer quick path: [Live app](https://book-tracker-teal-nine.vercel.app/) → demo account → search "Dune" → add a note → [Swagger](https://book-tracker-teal-nine.vercel.app/api/docs/).*
 
