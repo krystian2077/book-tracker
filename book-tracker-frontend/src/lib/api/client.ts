@@ -1,12 +1,10 @@
 import axios, { AxiosError } from 'axios'
 
-/** Production fallback when VITE_API_BASE_URL is unset (signed CSRF supports cross-origin). */
-const PRODUCTION_API = 'https://book-tracker-production-d6a1.up.railway.app'
-
 function resolveBaseUrl(): string {
   const env = import.meta.env.VITE_API_BASE_URL?.trim()
   if (env) return env.replace(/\/$/, '')
-  return import.meta.env.PROD ? PRODUCTION_API : 'http://localhost:8000'
+  // Production: same-origin /api via Vercel serverless proxy (first-party cookies).
+  return import.meta.env.PROD ? '' : 'http://localhost:8000'
 }
 
 const BASE_URL = resolveBaseUrl()
@@ -34,9 +32,27 @@ function readCookie(name: string): string | null {
 
 /** In-memory CSRF token for cross-origin deploys (Vercel frontend + Railway API). */
 let storedCsrfToken: string | null = null
+let csrfBootstrap: Promise<void> | null = null
 
 export function setCsrfToken(token: string | null): void {
   storedCsrfToken = token
+}
+
+async function bootstrapCsrfToken(): Promise<void> {
+  const { data } = await api.get<{ csrf_token?: string }>('/auth/csrf/')
+  if (data.csrf_token) {
+    setCsrfToken(data.csrf_token)
+  }
+}
+
+function ensureCsrfToken(): Promise<void> {
+  if (storedCsrfToken) return Promise.resolve()
+  if (!csrfBootstrap) {
+    csrfBootstrap = bootstrapCsrfToken().finally(() => {
+      csrfBootstrap = null
+    })
+  }
+  return csrfBootstrap
 }
 
 function resolveCsrfToken(): string | null {
@@ -45,9 +61,10 @@ function resolveCsrfToken(): string | null {
 
 const UNSAFE_METHODS = new Set(['post', 'put', 'patch', 'delete'])
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   const method = (config.method ?? 'get').toLowerCase()
   if (UNSAFE_METHODS.has(method)) {
+    await ensureCsrfToken()
     const csrfToken = resolveCsrfToken()
     if (csrfToken) {
       config.headers.set('X-CSRFToken', csrfToken)
