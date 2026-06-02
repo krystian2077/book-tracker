@@ -1,8 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
-from django.utils.decorators import method_decorator
-from django.middleware.csrf import get_token
-from django.views.decorators.csrf import ensure_csrf_cookie
+from apps.accounts.csrf_tokens import issue_api_csrf_token
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -36,18 +34,16 @@ def _unique_username(base: str) -> str:
     return username
 
 
-@method_decorator(ensure_csrf_cookie, name="get")
 class CSRFView(APIView):
-    """Sets the `csrftoken` cookie so the SPA can echo it on unsafe requests."""
+    """Returns a signed CSRF token for the SPA to send on unsafe requests."""
 
     authentication_classes = []
     permission_classes = [AllowAny]
 
     def get(self, request):
-        # Also return the token in the body so cross-origin SPAs (Vercel + Railway)
-        # can echo it in X-CSRFToken — document.cookie cannot read cookies on the
-        # API host from a different site.
-        return Response({"detail": "CSRF cookie set.", "csrf_token": get_token(request)})
+        return Response(
+            {"detail": "CSRF token issued.", "csrf_token": issue_api_csrf_token()}
+        )
 
 
 class RegisterView(APIView):

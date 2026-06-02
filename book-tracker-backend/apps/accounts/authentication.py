@@ -3,6 +3,11 @@ from django.middleware.csrf import CsrfViewMiddleware
 from rest_framework import exceptions
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from apps.accounts.csrf_tokens import (
+    request_origin_trusted,
+    validate_api_csrf_token,
+)
+
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
 
 
@@ -12,11 +17,22 @@ class _CSRFCheck(CsrfViewMiddleware):
 
 
 def _enforce_csrf(request) -> None:
-    """Run Django's CSRF check manually (DRF views are csrf_exempt).
+    """Protect cookie-JWT auth on unsafe methods.
 
-    Cookie-based auth is vulnerable to CSRF, so we require the double-submit
-    token (csrftoken cookie echoed in the X-CSRFToken header) on unsafe methods.
+    Cross-origin SPAs (Vercel + Railway): signed token in ``X-CSRFToken`` plus
+    trusted ``Origin`` — no third-party ``csrftoken`` cookie required.
+
+    Same-site / tests without ``Origin``: Django double-submit fallback.
     """
+    header_token = request.META.get("HTTP_X_CSRFTOKEN", "")
+
+    if request_origin_trusted(request):
+        if validate_api_csrf_token(header_token):
+            return
+        raise exceptions.PermissionDenied(
+            "Security check failed. Refresh the page and try again."
+        )
+
     check = _CSRFCheck(lambda req: None)
     check.process_request(request)
     reason = check.process_view(request, None, (), {})

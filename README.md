@@ -568,15 +568,16 @@ Swagger: `https://your-app.up.railway.app/api/docs/`
 1. **Import** the same GitHub repo on [Vercel](https://vercel.com).
 2. Set **Root Directory** to `book-tracker-frontend`.
 3. Framework preset: **Vite** (auto-detected from `vercel.json`).
-4. Set **Environment Variable**:
+4. **Environment variables** (optional):
 
 | Variable | Value |
 |----------|-------|
-| `VITE_API_BASE_URL` | `https://your-app.up.railway.app` (no trailing slash) |
+| `VITE_API_BASE_URL` | **Leave unset** — the app calls same-origin `/api`, proxied to Railway via [`vercel.json`](book-tracker-frontend/vercel.json). Do **not** set this to the Railway URL. |
+| `VITE_GOOGLE_CLIENT_ID` | Your Google OAuth client ID (optional) |
 
 5. Deploy → open your Vercel URL → **Try the demo account**.
 
-> `VITE_*` vars are baked in at **build time**. Redeploy after changing the API URL.
+> `VITE_*` vars are baked in at **build time**. Redeploy after changing them.
 
 ---
 
