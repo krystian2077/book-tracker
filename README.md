@@ -34,6 +34,7 @@
 - [Testing](#-testing)
 - [Project structure](#-project-structure)
 - [Deployment (Vercel + Railway)](#-deployment-vercel--railway)
+- [Production troubleshooting](#-production-troubleshooting)
 - [Loose ends & future work](#-loose-ends--future-work)
 - [AI usage & verification](#-ai-usage--verification)
 - [Further reading](#-further-reading)
@@ -572,8 +573,8 @@ Swagger: `https://your-app.up.railway.app/api/docs/`
 
 | Variable | Value |
 |----------|-------|
-| `VITE_API_BASE_URL` | **Leave unset** — production uses same-origin `/api` (Vercel serverless proxy to Railway). |
-| `RAILWAY_API_URL` | Optional on Vercel — backend URL for Edge middleware proxy (defaults to your Railway deploy). |
+| `VITE_API_BASE_URL` | **Leave unset** — production calls same-origin `/api` (proxied to Railway via Edge middleware). |
+| `RAILWAY_API_URL` | Optional on Vercel — backend URL for the proxy (defaults to your Railway deploy). |
 | `VITE_GOOGLE_CLIENT_ID` | Your Google OAuth client ID (optional) |
 
 5. Deploy → open your Vercel URL → **Try the demo account**.
@@ -607,10 +608,90 @@ See [`test-data/README.md`](test-data/README.md) for step-by-step instructions.
 
 | | Local (Docker) | Production |
 |---|----------------|------------|
-| Frontend | `npm run dev` :5173 | Vercel static + SPA rewrites |
+| Frontend | `npm run dev` :5173 | Vercel static + Edge middleware (`/api` → Railway) |
 | Backend | `runserver` :8000 | gunicorn via Railway |
 | Database | Docker Postgres | Railway Postgres |
 | Demo seed | `docker compose exec backend python manage.py seed_demo_data` | Automatic on every deploy |
+
+---
+
+## 🛠 Production troubleshooting
+
+During deployment and live testing (Vercel frontend + Railway backend), several issues appeared that **do not show up in local Docker dev** (same-site `localhost:5173` ↔ `localhost:8000`). Below is an honest log of what broke, why, and how it was fixed — useful if you hit similar symptoms in production.
+
+### Railway (backend)
+
+| Symptom | Cause | Fix |
+|---------|--------|-----|
+| Deploy fails / empty DB | `DATABASE_URL` missing or set to unresolved placeholder `${{...}}` | In Railway: **Variables → Add Reference → Postgres → `DATABASE_URL`**. Code also falls back via `resolve_database_url()` in `config/settings.py`. |
+| Healthcheck fails while gunicorn runs | Railway probes hostnames not in `ALLOWED_HOSTS` | Allow `*.up.railway.app`, `localhost`, and `RAILWAY_PUBLIC_DOMAIN` in settings. |
+| Demo user missing | `seed_demo_data` did not run | `scripts/start.sh` runs migrate + seed on every deploy (idempotent). Verify deploy logs show *"Seeding demo account..."*. |
+
+### Google Sign-In (optional)
+
+| Symptom | Cause | Fix |
+|---------|--------|-----|
+| No Google button | `VITE_GOOGLE_CLIENT_ID` empty | Set the same OAuth Web client ID on Vercel and `GOOGLE_OAUTH_CLIENT_ID` on Railway; **redeploy Vercel** after changing `VITE_*`. |
+| `origin_mismatch` | Wrong **Authorized JavaScript origins** | Add `http://localhost:5173` and `https://your-app.vercel.app` (no trailing slash). Redirect URIs can stay empty for Google Identity Services (GIS). |
+| `access blocked` | OAuth app in **Testing** mode | Add your Gmail under **OAuth consent screen → Test users**. |
+
+### CSRF & cookies (Vercel ↔ Railway cross-origin)
+
+Locally, CSRF uses Django’s **double-submit cookie** (`csrftoken` + `X-CSRFToken`). On production, the SPA on Vercel and API on Railway are **different sites**, which caused a chain of problems:
+
+| Symptom | Cause | Fix |
+|---------|--------|-----|
+| **"Security check failed"** on add/delete/export | Browser blocked third-party `csrftoken` cookie; header token did not match missing cookie | **Signed CSRF tokens** (`apps/accounts/csrf_tokens.py`): validate `X-CSRFToken` + trusted `Origin` without requiring the cookie. Token returned in `GET /api/auth/csrf/` JSON body; frontend stores it in memory (`setCsrfToken`). |
+| **401** on `/api/auth/me/`, **403** on `/api/library/` | JWT cookies also treated as third-party when frontend called Railway URL directly | **Same-origin API** on Vercel (see proxy below) so cookies are first-party on the app domain. Railway still needs `CORS_*`, `CSRF_TRUSTED_ORIGINS`, `AUTH_COOKIE_SECURE=True`, `AUTH_COOKIE_SAMESITE=None` for direct API access / tools. |
+
+### Logout
+
+| Symptom | Cause | Fix |
+|---------|--------|-----|
+| Still logged in after "Log out" | `delete_cookie()` without matching `SameSite` / `Secure` flags | Pass `samesite` to `delete_cookie()` in `clear_auth_cookies()` (Django sets `Secure` automatically when `SameSite=None`). |
+| **500** on `POST /api/auth/logout/` | `delete_cookie(..., secure=True)` — **not supported** in Django 5.1 | Only pass `samesite` and `path`; do not pass `secure` as a kwarg. |
+
+### Vercel API routing (the main production blocker)
+
+The frontend must call **`https://your-app.vercel.app/api/...`**, not the Railway URL directly, so session cookies work. Several proxy approaches were tried:
+
+| Approach | What happened | Outcome |
+|----------|----------------|---------|
+| `VITE_API_BASE_URL` → Railway URL | API reachable; cookies blocked cross-site | CSRF/auth fixes helped mutations, but session remained fragile in strict browsers. |
+| `vercel.json` **rewrite** to external Railway URL | `/api/health/` returned **index.html** (SPA) | Not reliable for this setup. |
+| **`api/[...path].ts`** serverless proxy | **404** on paths with **trailing slash** (`/api/auth/csrf/`); Django uses trailing slashes | Unusable for this API. |
+| Unset `VITE_API_BASE_URL` + broken proxy | Browser got HTML instead of JSON → crash **`toFixed` on undefined** on dashboard | Default API URL + HTML response guard in Axios interceptor. |
+| **`middleware.ts`** Edge proxy | Forwards full path (including trailing slash) to Railway | **Current solution** — see [`book-tracker-frontend/middleware.ts`](book-tracker-frontend/middleware.ts). |
+
+**Verify after deploy:**
+
+```bash
+curl https://your-app.vercel.app/api/health/
+# → {"status":"ok"}   (not HTML, not 404)
+```
+
+**Vercel settings:** leave `VITE_API_BASE_URL` **unset** (build uses same-origin `/api`). Optional: `RAILWAY_API_URL` if your backend hostname differs from the default in middleware.
+
+### Misleading UI messages
+
+| Symptom | Actual cause | Fix |
+|---------|----------------|-----|
+| *"Demo account is not available. Seed demo data..."* | Login request failed (API/proxy down), not missing seed | Demo user exists after `seed_demo_data`; error message now uses real API error via `getUserErrorMessage()`. |
+
+### Build / TypeScript
+
+| Symptom | Cause | Fix |
+|---------|--------|-----|
+| Vercel build fails on `client.ts` | `response.headers['content-type']` typed as `string \| number \| boolean \| string[]` | Narrow with `typeof raw === 'string'` before calling `.includes()`. |
+
+### Architecture takeaway
+
+```text
+Browser  →  your-app.vercel.app/api/*  →  Edge middleware  →  Railway /api/*
+              (first-party cookies)         (proxy)            (Django + Postgres)
+```
+
+Local dev stays **cross-port on localhost** (same site). Production relies on **one public origin** for both SPA and API, with **signed CSRF** as a safety net when `Origin` is present.
 
 ---
 
@@ -660,7 +741,7 @@ AI coding assistants (Cursor) were used as a **pair-programming tool**, not as a
 | 📐 **Architecture boilerplate** | Initial Django app layout, DRF serializer/view patterns, Axios CSRF interceptor, and TanStack Query hook structure — then refactored to match project conventions. |
 | 🐳 **Docker Compose setup** | Service definitions, env wiring, and migration/seed commands in README snippets. |
 | 📝 **Documentation drafts** | First passes of README sections and inline docstrings; rewritten for accuracy after code review. |
-| 🐛 **Debugging** | CSRF cookie timing, CORS + credentials in dev, and Playwright race conditions during page transitions. |
+| 🐛 **Debugging** | CSRF cookie timing, CORS + credentials in dev, Playwright race conditions, and **production Vercel + Railway** issues (documented in [Production troubleshooting](#-production-troubleshooting)). |
 
 ### How output was verified
 
