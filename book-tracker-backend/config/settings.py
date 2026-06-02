@@ -62,6 +62,12 @@ _railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "").strip()
 if _railway_domain and _railway_domain not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(_railway_domain)
 
+# Railway internal health checks and rolling deploys may use localhost or any
+# *.up.railway.app hostname — allow suffix match so healthcheck passes.
+for _host in (".up.railway.app", ".railway.app", "localhost", "127.0.0.1"):
+    if _host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_host)
+
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
