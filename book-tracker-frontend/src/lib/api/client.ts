@@ -57,7 +57,8 @@ api.interceptors.request.use((config) => {
 })
 
 api.interceptors.response.use((response) => {
-  const contentType = response.headers['content-type'] ?? ''
+  const rawContentType = response.headers['content-type']
+  const contentType = typeof rawContentType === 'string' ? rawContentType : ''
   if (
     contentType.includes('text/html') &&
     typeof response.data === 'string' &&
