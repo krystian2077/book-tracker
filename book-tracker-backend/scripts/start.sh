@@ -2,6 +2,12 @@
 # Production entrypoint for Railway (and similar PaaS hosts).
 set -euo pipefail
 
+if [ -z "${DATABASE_URL:-}" ] && [ -z "${PGHOST:-}" ] && [ -z "${POSTGRES_HOST:-}" ]; then
+  echo "ERROR: DATABASE_URL is not set."
+  echo "In Railway: backend service → Variables → Add Reference → Postgres → DATABASE_URL"
+  exit 1
+fi
+
 echo "Running migrations..."
 python manage.py migrate --noinput
 
