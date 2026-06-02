@@ -12,7 +12,7 @@
 
 *React + TypeScript frontend · Django REST API · PostgreSQL · Docker Compose*
 
-[Quick Start](#-quick-start) · [Features](#-features) · [Architecture](#-architecture) · [Scaling](#-scaling-to-10m-records) · [Testing](#-testing) · [AI Usage](#-ai-usage--verification)
+[Live demo](#-live-demo) · [Quick Start](#-quick-start) · [Features](#-features) · [API docs](#-api-overview) · [Testing](#-testing) · [Deploy](#-deployment-vercel--railway) · [AI usage](#-ai-usage--verification)
 
 </div>
 
@@ -36,8 +36,22 @@
 - [Deployment (Vercel + Railway)](#-deployment-vercel--railway)
 - [Production troubleshooting](#-production-troubleshooting)
 - [Loose ends & future work](#-loose-ends--future-work)
+- [Live demo](#-live-demo)
 - [AI usage & verification](#-ai-usage--verification)
-- [Further reading](#-further-reading)
+
+---
+
+## 🌐 Live demo
+
+| | URL |
+|---|-----|
+| **App (Vercel)** | https://book-tracker-teal-nine.vercel.app |
+| **Swagger UI** | https://book-tracker-teal-nine.vercel.app/api/docs/ |
+| **API health** | https://book-tracker-teal-nine.vercel.app/api/health/ |
+| **Backend (Railway)** | https://book-tracker-production-d6a1.up.railway.app |
+| **Repository** | https://github.com/krystian2077/book-tracker |
+
+**Demo login:** `demo` / `DemoPassword123!` (or **Try the demo account** on the sign-in screen).
 
 ---
 
@@ -138,7 +152,7 @@ npm run build
 ### 🔐 Authentication
 - Sign in / sign up with username, email, and password
 - **httpOnly JWT cookies** — tokens never exposed to JavaScript
-- CSRF double-submit protection on unsafe requests
+- CSRF protection on unsafe requests (cookie + signed token in production)
 - One-click **demo account** for reviewers
 - Optional **Google Sign-In** (hidden when client ID is unset)
 
@@ -222,11 +236,14 @@ flowchart TB
 
 ### Request flow (authenticated)
 
-1. Browser loads SPA → fetches CSRF cookie → checks `GET /auth/me/`
+1. Browser loads SPA → `GET /auth/csrf/` (token in JSON + optional cookie) → `GET /auth/me/`
 2. TanStack Query manages server state (cache, stale-while-revalidate, `keepPreviousData` on search)
-3. Unsafe methods (`POST`, `PATCH`, `DELETE`) attach `X-CSRFToken` from the `csrftoken` cookie
-4. Backend validates via DRF serializers; library queries use indexed search + keyset pagination
-5. Errors surface as field-level messages (forms) or toast/banner messages (API failures)
+3. Unsafe methods attach `X-CSRFToken` (from memory or `csrftoken` cookie on localhost)
+4. Backend validates CSRF (signed token + trusted `Origin` in production; double-submit fallback locally)
+5. DRF serializers validate payloads; library queries use indexed search + keyset pagination
+6. Errors surface as field-level messages (forms) or toast/banner messages (API failures)
+
+**Production:** the browser calls `your-app.vercel.app/api/*`; [Edge middleware](book-tracker-frontend/middleware.ts) proxies to Railway so JWT cookies stay first-party.
 
 ### Design principles
 
@@ -379,23 +396,30 @@ Validation lives in **one place on the server** and is **mirrored on the client*
 | Concern | Approach |
 |---------|----------|
 | Token storage | **httpOnly cookies** (access + refresh) — mitigates XSS token theft |
-| CSRF | Double-submit: non-httpOnly `csrftoken` cookie echoed in `X-CSRFToken` header |
+| CSRF (local) | Double-submit: `csrftoken` cookie + `X-CSRFToken` header |
+| CSRF (production) | Signed token in `X-CSRFToken` + trusted `Origin`; same-origin `/api` via Vercel middleware |
 | Local dev | `SameSite=Lax`, `Secure=False` |
-| Production (Vercel + Railway) | `SameSite=None`, `Secure=True`, HTTPS only |
+| Production cookies | First-party on Vercel domain (proxy); Railway env: `AUTH_COOKIE_SECURE=True`, `SAMESITE=None` |
 | Google Sign-In | GIS ID token → `POST /auth/google/` → same cookie session |
 
 ---
 
 ## 🔌 API overview
 
-All routes under `/api/`. Swagger UI at `/api/docs/`.
+All routes under `/api/`. Interactive docs:
+
+| Environment | Swagger UI | OpenAPI schema |
+|-------------|------------|------------------|
+| **Production (recommended)** | https://book-tracker-teal-nine.vercel.app/api/docs/ | https://book-tracker-teal-nine.vercel.app/api/schema/ |
+| **Railway (direct)** | https://book-tracker-production-d6a1.up.railway.app/api/docs/ | https://book-tracker-production-d6a1.up.railway.app/api/schema/ |
+| **Local** | http://localhost:8000/api/docs/ | http://localhost:8000/api/schema/ |
 
 <details>
 <summary><strong>Auth endpoints</strong></summary>
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/auth/csrf/` | Set CSRF cookie |
+| `GET` | `/auth/csrf/` | Issue CSRF token (JSON body + optional cookie) |
 | `POST` | `/auth/register/` | Create account |
 | `POST` | `/auth/login/` | Sign in |
 | `POST` | `/auth/logout/` | Sign out |
@@ -478,6 +502,7 @@ rekrutacja/
 │   │   ├── components/            # UI kit, layout, book cover
 │   │   └── lib/                   # API client, schemas, theme
 │   ├── e2e/                       # Playwright specs (10 files)
+│   ├── middleware.ts              # Edge proxy: /api/* → Railway (production)
 │   ├── test-data/                 # CSV samples (mirrors root test-data/)
 │   └── vercel.json                # Vercel SPA rewrites + build
 │
@@ -577,9 +602,11 @@ Swagger: `https://your-app.up.railway.app/api/docs/`
 | `RAILWAY_API_URL` | Optional on Vercel — backend URL for the proxy (defaults to your Railway deploy). |
 | `VITE_GOOGLE_CLIENT_ID` | Your Google OAuth client ID (optional) |
 
-5. Deploy → open your Vercel URL → **Try the demo account**.
+5. Deploy → open **https://book-tracker-teal-nine.vercel.app** → **Try the demo account**.
 
 > `VITE_*` vars are baked in at **build time**. Redeploy after changing them.
+
+**After deploy:** confirm [Swagger](https://book-tracker-teal-nine.vercel.app/api/docs/) and `curl https://book-tracker-teal-nine.vercel.app/api/health/` → `{"status":"ok"}`.
 
 ---
 
@@ -729,40 +756,47 @@ These were out of scope for the 8-hour task but fit cleanly into the current arc
 
 ## 🤖 AI usage & verification
 
-AI coding assistants (Cursor) were used as a **pair-programming tool**, not as an autonomous author. All generated output was **read, adapted, and verified** before being kept. Below is an honest breakdown.
+> *Recruitment brief: “If you used AI tools, please briefly describe how you used them and how you verified their output.”*
 
-### Where AI helped
+I used **Cursor** (AI-assisted IDE) as a **pair-programming colleague** — not as an autonomous author. I kept **full control** over architecture, requirements, and every merge decision: I described what I wanted, reviewed diffs line by line, ran tests, fixed regressions, and deployed to production myself. **This is my codebase**; AI suggestions were starting points I accepted, adapted, or rejected.
 
-| Area | How AI was used |
-|------|-----------------|
-| 🎨 **UI styling & responsiveness** | Layout structure, Tailwind utility patterns, spacing/typography tokens, and responsive breakpoints for **mobile, tablet, and laptop** views — sidebar collapse, grid columns, touch-friendly controls. I reviewed every screen size in the browser and adjusted manually where needed. |
-| 🌐 **Open Library / Google Books integration** | HTTP client setup, response field mapping, cover URL normalization, and fallback logic when one source lacks pages or cover art. Cross-checked against [Open Library API docs](https://openlibrary.org/dev/docs/api) and Google Books API reference. |
-| 🧪 **Test scaffolding** | pytest fixtures, Playwright helper functions, and Vitest cases for CSV/ISBN preview parsers. Test *intent* and assertions were reviewed; flaky selectors were fixed manually. |
-| 📐 **Architecture boilerplate** | Initial Django app layout, DRF serializer/view patterns, Axios CSRF interceptor, and TanStack Query hook structure — then refactored to match project conventions. |
-| 🐳 **Docker Compose setup** | Service definitions, env wiring, and migration/seed commands in README snippets. |
-| 📝 **Documentation drafts** | First passes of README sections and inline docstrings; rewritten for accuracy after code review. |
-| 🐛 **Debugging** | CSRF cookie timing, CORS + credentials in dev, Playwright race conditions, and **production Vercel + Railway** issues (documented in [Production troubleshooting](#-production-troubleshooting)). |
+### How I used AI
 
-### How output was verified
+| Area | My workflow with AI |
+|------|---------------------|
+| 🎨 **UI & layout** | I asked for Tailwind patterns and responsive tweaks; I checked **mobile, tablet, and desktop** in the browser and rewrote layouts where they felt wrong. |
+| 🌐 **ISBN metadata** | AI helped draft HTTP clients and field mapping; I verified against [Open Library](https://openlibrary.org/dev/docs/api) / Google Books docs and tested real ISBNs in the app. |
+| 🧪 **Tests** | AI scaffolded pytest / Playwright / Vitest cases; **I defined scenarios and assertions** and fixed flaky E2E selectors myself. |
+| 📐 **Backend / API** | AI proposed DRF boilerplate; I chose the **Book vs UserBook** split, cursor pagination, and trigram indexes and enforced them in code + tests. |
+| 🚢 **Deploy & debugging** | AI suggested Railway/Vercel config; I iterated on **live production** until login, CSRF, logout, and add/delete worked ([troubleshooting log](#-production-troubleshooting)). |
+| 📝 **README** | AI drafted sections; I rewrote for accuracy after each deploy fix (including this section). |
 
-| Check | Result |
-|-------|--------|
-| `pytest` (backend) | ✅ 87 / 87 passing |
-| `vitest run --exclude e2e/**` | ✅ 24 / 24 passing |
-| `playwright test` (chromium + mobile) | ✅ 50 / 50 passing |
-| `ruff check .` | ✅ clean |
-| `npm run build` | ✅ TypeScript + Vite production bundle |
-| **Manual browser testing** | All flows: auth, dashboard, search, add/validate, ISBN lookup, CSV preview, export, notes, theme toggle, error states |
-| **Swagger UI** | Endpoint contracts match frontend API calls |
-| **Official documentation** | Django 5.2, Tailwind v4 CSS-first setup, SimpleJWT cookie pattern, `pg_trgm` indexing |
+### How I verified AI output (evidence)
 
-> AI accelerated repetitive work (styling patterns, test boilerplate, API wiring). **Architectural decisions** — normalized Book/UserBook split, keyset pagination, trigram search, cookie auth — were made deliberately and are reflected in the code and tests.
+| Verification | What I did | Result |
+|--------------|------------|--------|
+| **Automated tests** | `pytest` (backend), `vitest run --exclude e2e/**`, `playwright test`, `ruff check`, `npm run build` | ✅ **161 tests** green; production build passes |
+| **API contract** | Compared frontend calls to [Swagger UI](https://book-tracker-teal-nine.vercel.app/api/docs/) and OpenAPI schema | Endpoints, payloads, and auth flow match |
+| **Manual QA** | Walked every major flow in the browser (auth, demo, search, ISBN, CSV import/export, notes, theme) | Works locally and on [live demo](https://book-tracker-teal-nine.vercel.app) |
+| **Production smoke** | `curl` health, demo login, add/delete book after Vercel + Railway deploy | `GET /api/health/` → `{"status":"ok"}`; session cookies via middleware |
+| **Code review** | Read AI diffs before commit; removed wrong assumptions (e.g. `delete_cookie(secure=…)` on Django 5.1) | Fixes tracked in git history and [Production troubleshooting](#-production-troubleshooting) |
+| **Official docs** | Cross-checked Django 5.2, DRF, SimpleJWT cookies, Tailwind v4, `pg_trgm` | Patterns match current library behaviour |
+
+### What stayed mine (not “AI-generated and shipped”)
+
+- **Scope & product choices** — dashboard, notes, CSV/ISBN import, export, Google OAuth option, demo seed for reviewers.
+- **Scale-oriented design** — keyset pagination, indexes, trigram search (see [Scaling](#-scaling-to-10m-records)).
+- **Security model** — httpOnly JWT cookies, CSRF strategy (double-submit locally; signed token + `Origin` + same-origin proxy in production).
+- **Final quality bar** — I did not consider a feature done until **tests passed and I clicked through it** on production.
+
+**Bottom line:** AI sped up typing and exploration; **judgment, integration, testing, and deployment were mine throughout.**
 
 
 
 <div align="center">
 
+**Built as a recruitment task submission — structure, tests, and production deploy included.**
 
-⭐ *If you're reviewing this: start the demo account, search for "Dune", open a book, add a note, and try the ISBN lookup tab.*
+⭐ *Reviewer quick path: [Live app](https://book-tracker-teal-nine.vercel.app) → demo account → search "Dune" → add a note → [Swagger](https://book-tracker-teal-nine.vercel.app/api/docs/).*
 
 </div>
