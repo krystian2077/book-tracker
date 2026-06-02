@@ -1,4 +1,4 @@
-import { api } from '@/lib/api/client'
+import { api, setCsrfToken } from '@/lib/api/client'
 import type { AuthUser } from '@/lib/api/types'
 
 export interface LoginPayload {
@@ -12,9 +12,12 @@ export interface RegisterPayload {
   password: string
 }
 
-/** Triggers the backend to set the `csrftoken` cookie used for unsafe requests. */
+/** Fetches CSRF token (cookie + response body for cross-origin production). */
 export async function fetchCsrf(): Promise<void> {
-  await api.get('/auth/csrf/')
+  const { data } = await api.get<{ csrf_token?: string }>('/auth/csrf/')
+  if (data.csrf_token) {
+    setCsrfToken(data.csrf_token)
+  }
 }
 
 export async function fetchMe(): Promise<AuthUser> {

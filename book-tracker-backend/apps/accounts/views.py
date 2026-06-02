@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.utils.decorators import method_decorator
+from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -43,7 +44,10 @@ class CSRFView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        return Response({"detail": "CSRF cookie set."})
+        # Also return the token in the body so cross-origin SPAs (Vercel + Railway)
+        # can echo it in X-CSRFToken — document.cookie cannot read cookies on the
+        # API host from a different site.
+        return Response({"detail": "CSRF cookie set.", "csrf_token": get_token(request)})
 
 
 class RegisterView(APIView):

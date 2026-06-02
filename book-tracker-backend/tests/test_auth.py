@@ -99,6 +99,14 @@ def test_refresh_issues_new_access(db):
     assert ACCESS in response.cookies
 
 
+def test_csrf_endpoint_returns_token(db):
+    client = APIClient()
+    response = client.get("/api/auth/csrf/")
+    assert response.status_code == 200
+    assert response.data["csrf_token"]
+    assert response.cookies["csrftoken"].value == response.data["csrf_token"]
+
+
 def test_unsafe_request_without_csrf_rejected(db):
     client = APIClient(enforce_csrf_checks=True)
     client.post("/api/auth/register/", register_payload(), format="json")

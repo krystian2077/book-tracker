@@ -23,12 +23,23 @@ function readCookie(name: string): string | null {
   return match ? decodeURIComponent(match[2]) : null
 }
 
+/** In-memory CSRF token for cross-origin deploys (Vercel frontend + Railway API). */
+let storedCsrfToken: string | null = null
+
+export function setCsrfToken(token: string | null): void {
+  storedCsrfToken = token
+}
+
+function resolveCsrfToken(): string | null {
+  return storedCsrfToken ?? readCookie('csrftoken')
+}
+
 const UNSAFE_METHODS = new Set(['post', 'put', 'patch', 'delete'])
 
 api.interceptors.request.use((config) => {
   const method = (config.method ?? 'get').toLowerCase()
   if (UNSAFE_METHODS.has(method)) {
-    const csrfToken = readCookie('csrftoken')
+    const csrfToken = resolveCsrfToken()
     if (csrfToken) {
       config.headers.set('X-CSRFToken', csrfToken)
     }
