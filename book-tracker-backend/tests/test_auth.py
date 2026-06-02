@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from rest_framework.test import APIClient
 
 User = get_user_model()
@@ -84,6 +85,21 @@ def test_logout_clears_cookies(db):
     assert response.status_code == 200
     # delete_cookie sets an expired cookie value.
     assert response.cookies[ACCESS].value == ""
+
+
+@override_settings(AUTH_COOKIE_SECURE=True, AUTH_COOKIE_SAMESITE="None")
+def test_logout_delete_cookie_uses_cross_site_flags(db):
+    User.objects.create_user(username="alice", password="Sup3rSecret!23")
+    client = APIClient()
+    client.post(
+        "/api/auth/login/",
+        {"username": "alice", "password": "Sup3rSecret!23"},
+        format="json",
+    )
+    response = client.post("/api/auth/logout/")
+    access_cookie = response.cookies[ACCESS]
+    assert access_cookie["samesite"] == "None"
+    assert access_cookie["secure"]
 
 
 def test_refresh_issues_new_access(db):

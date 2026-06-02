@@ -35,8 +35,14 @@ def set_auth_cookies(response: Response, access: str, refresh: str | None = None
 
 
 def clear_auth_cookies(response: Response) -> None:
-    response.delete_cookie(settings.AUTH_COOKIE_ACCESS, path=settings.AUTH_COOKIE_PATH)
-    response.delete_cookie(settings.AUTH_COOKIE_REFRESH, path=settings.AUTH_COOKIE_PATH)
+    # Match set_cookie flags — browsers ignore delete Set-Cookie without SameSite/Secure.
+    delete_kwargs = {
+        "path": settings.AUTH_COOKIE_PATH,
+        "samesite": settings.AUTH_COOKIE_SAMESITE,
+        "secure": settings.AUTH_COOKIE_SECURE,
+    }
+    response.delete_cookie(settings.AUTH_COOKIE_ACCESS, **delete_kwargs)
+    response.delete_cookie(settings.AUTH_COOKIE_REFRESH, **delete_kwargs)
 
 
 def issue_tokens_for_user(user) -> tuple[str, str]:

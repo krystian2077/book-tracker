@@ -37,6 +37,7 @@ export async function register(payload: RegisterPayload): Promise<AuthUser> {
 
 export async function logout(): Promise<void> {
   await api.post('/auth/logout/')
+  setCsrfToken(null)
 }
 
 export async function googleLogin(credential: string): Promise<AuthUser> {
