@@ -35,11 +35,11 @@ def set_auth_cookies(response: Response, access: str, refresh: str | None = None
 
 
 def clear_auth_cookies(response: Response) -> None:
-    # Match set_cookie flags — browsers ignore delete Set-Cookie without SameSite/Secure.
+    # Django delete_cookie only accepts path/samesite; it auto-sets Secure when
+    # samesite is "none" (required for cross-site cookies on Vercel + Railway).
     delete_kwargs = {
         "path": settings.AUTH_COOKIE_PATH,
         "samesite": settings.AUTH_COOKIE_SAMESITE,
-        "secure": settings.AUTH_COOKIE_SECURE,
     }
     response.delete_cookie(settings.AUTH_COOKIE_ACCESS, **delete_kwargs)
     response.delete_cookie(settings.AUTH_COOKIE_REFRESH, **delete_kwargs)
