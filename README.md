@@ -45,7 +45,7 @@
 
 | | URL |
 |---|-----|
-| **App (Vercel)** | https://book-tracker-teal-nine.vercel.app |
+| **App (Vercel)** | https://book-tracker-teal-nine.vercel.app/ |
 | **Swagger UI** | https://book-tracker-teal-nine.vercel.app/api/docs/ |
 | **API health** | https://book-tracker-teal-nine.vercel.app/api/health/ |
 | **Backend (Railway)** | https://book-tracker-production-d6a1.up.railway.app |
@@ -602,7 +602,7 @@ Swagger: `https://your-app.up.railway.app/api/docs/`
 | `RAILWAY_API_URL` | Optional on Vercel — backend URL for the proxy (defaults to your Railway deploy). |
 | `VITE_GOOGLE_CLIENT_ID` | Your Google OAuth client ID (optional) |
 
-5. Deploy → open **https://book-tracker-teal-nine.vercel.app** → **Try the demo account**.
+5. Deploy → open **https://book-tracker-teal-nine.vercel.app/** → **Try the demo account**.
 
 > `VITE_*` vars are baked in at **build time**. Redeploy after changing them.
 
@@ -777,7 +777,7 @@ I used **Cursor** (AI-assisted IDE) as a **pair-programming colleague** — not 
 |--------------|------------|--------|
 | **Automated tests** | `pytest` (backend), `vitest run --exclude e2e/**`, `playwright test`, `ruff check`, `npm run build` | ✅ **161 tests** green; production build passes |
 | **API contract** | Compared frontend calls to [Swagger UI](https://book-tracker-teal-nine.vercel.app/api/docs/) and OpenAPI schema | Endpoints, payloads, and auth flow match |
-| **Manual QA** | Walked every major flow in the browser (auth, demo, search, ISBN, CSV import/export, notes, theme) | Works locally and on [live demo](https://book-tracker-teal-nine.vercel.app) |
+| **Manual QA** | Walked every major flow in the browser (auth, demo, search, ISBN, CSV import/export, notes, theme) | Works locally and on [live demo](https://book-tracker-teal-nine.vercel.app/) |
 | **Production smoke** | `curl` health, demo login, add/delete book after Vercel + Railway deploy | `GET /api/health/` → `{"status":"ok"}`; session cookies via middleware |
 | **Code review** | Read AI diffs before commit; removed wrong assumptions (e.g. `delete_cookie(secure=…)` on Django 5.1) | Fixes tracked in git history and [Production troubleshooting](#-production-troubleshooting) |
 | **Official docs** | Cross-checked Django 5.2, DRF, SimpleJWT cookies, Tailwind v4, `pg_trgm` | Patterns match current library behaviour |
@@ -797,6 +797,6 @@ I used **Cursor** (AI-assisted IDE) as a **pair-programming colleague** — not 
 
 **Built as a recruitment task submission — structure, tests, and production deploy included.**
 
-⭐ *Reviewer quick path: [Live app](https://book-tracker-teal-nine.vercel.app) → demo account → search "Dune" → add a note → [Swagger](https://book-tracker-teal-nine.vercel.app/api/docs/).*
+⭐ *Reviewer quick path: [Live app](https://book-tracker-teal-nine.vercel.app/) → demo account → search "Dune" → add a note → [Swagger](https://book-tracker-teal-nine.vercel.app/api/docs/).*
 
 </div>
