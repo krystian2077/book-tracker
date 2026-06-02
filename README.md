@@ -754,9 +754,7 @@ These were out of scope for the 8-hour task but fit cleanly into the current arc
 
 ## 🤖 AI usage & verification
 
-> *Recruitment brief: “If you used AI tools, please briefly describe how you used them and how you verified their output.”*
-
-I used **Cursor** (AI-assisted IDE) as a **pair-programming colleague** — not as an autonomous author. I kept **full control** over architecture, requirements, and every merge decision: I described what I wanted, reviewed diffs line by line, ran tests, fixed regressions, and deployed to production myself. **This is my codebase**; AI suggestions were starting points I accepted, adapted, or rejected.
+I used **Cursor** as a **pair-programming colleague** - not as an autonomous author. I kept **full control** over architecture, requirements, and every merge decision: I described what I wanted, reviewed diffs line by line, ran tests, fixed regressions, and deployed to production myself. **This is my codebase**; AI suggestions were starting points I accepted, adapted, or rejected.
 
 ### How I used AI
 
@@ -782,10 +780,10 @@ I used **Cursor** (AI-assisted IDE) as a **pair-programming colleague** — not 
 
 ### What stayed mine (not “AI-generated and shipped”)
 
-- **Scope & product choices** — dashboard, notes, CSV/ISBN import, export, Google OAuth option, demo seed for reviewers.
-- **Scale-oriented design** — keyset pagination, indexes, trigram search (see [Scaling](#-scaling-to-10m-records)).
-- **Security model** — httpOnly JWT cookies, CSRF strategy (double-submit locally; signed token + `Origin` + same-origin proxy in production).
-- **Final quality bar** — I did not consider a feature done until **tests passed and I clicked through it** on production.
+- **Scope & product choices** - dashboard, notes, CSV/ISBN import, export, Google OAuth option, demo seed for reviewers.
+- **Scale-oriented design** - keyset pagination, indexes, trigram search (see [Scaling](#-scaling-to-10m-records)).
+- **Security model** - httpOnly JWT cookies, CSRF strategy (double-submit locally; signed token + `Origin` + same-origin proxy in production).
+- **Final quality bar** - I did not consider a feature done until **tests passed and I clicked through it** on production.
 
 **Bottom line:** AI sped up typing and exploration; **judgment, integration, testing, and deployment were mine throughout.**
 
