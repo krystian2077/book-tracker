@@ -675,17 +675,7 @@ AI coding assistants (Cursor) were used as a **pair-programming tool**, not as a
 
 > AI accelerated repetitive work (styling patterns, test boilerplate, API wiring). **Architectural decisions** — normalized Book/UserBook split, keyset pagination, trigram search, cookie auth — were made deliberately and are reflected in the code and tests.
 
----
 
-## 📚 Further reading
-
-| Document | Contents |
-|----------|----------|
-| [Backend README](book-tracker-backend/README.md) | API details, auth strategy, scaling rationale, migrations |
-| [Frontend README](book-tracker-frontend/README.md) | UI features, client auth flow, scripts |
-| [E2E README](book-tracker-frontend/e2e/README.md) | Playwright setup and coverage list |
-
----
 
 <div align="center">
 
