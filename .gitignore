@@ -1,0 +1,24 @@
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Env secrets (never commit)
+.env
+.env.local
+*.local
+
+# Frontend build artifacts
+book-tracker-frontend/node_modules/
+book-tracker-frontend/dist/
+
+# Backend Python
+book-tracker-backend/.venv/
+book-tracker-backend/__pycache__/
+book-tracker-backend/.pytest_cache/
+book-tracker-backend/.ruff_cache/
+book-tracker-backend/staticfiles/
+
+# Test reports
+book-tracker-frontend/playwright-report/
+book-tracker-frontend/test-results/

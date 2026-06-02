@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "book-tracker-backend"
+version = "0.1.0"
+description = "Book Tracker backend: Django + DRF + PostgreSQL personal reading tracker"
+requires-python = ">=3.12"
+dependencies = [
+    "Django>=5.2,<5.3",
+    "djangorestframework>=3.15",
+    "djangorestframework-simplejwt>=5.3",
+    "django-cors-headers>=4.4",
+    "drf-spectacular>=0.27",
+    "dj-database-url>=2.2",
+    "psycopg[binary]>=3.2",
+    "python-dotenv>=1.0",
+    "requests>=2.32",
+    "google-auth>=2.34",
+    "gunicorn>=23.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-django>=4.9",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "model-bakery>=1.19",
+]
+
+[tool.setuptools.packages.find]
+include = ["config*", "apps*"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+testpaths = ["tests", "apps"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "DJ"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"*/migrations/*" = ["E", "F", "B"]
