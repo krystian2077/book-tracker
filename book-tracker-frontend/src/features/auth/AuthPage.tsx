@@ -66,8 +66,10 @@ export function AuthPage() {
     setDemoLoading(true)
     try {
       await login(DEMO_CREDENTIALS)
-    } catch {
-      setFormError('Demo account is not available. Seed demo data on the backend.')
+    } catch (error) {
+      setFormError(
+        getUserErrorMessage(error, 'Demo login failed. Try again in a moment.'),
+      )
     } finally {
       setDemoLoading(false)
     }

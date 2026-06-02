@@ -573,7 +573,7 @@ Swagger: `https://your-app.up.railway.app/api/docs/`
 | Variable | Value |
 |----------|-------|
 | `VITE_API_BASE_URL` | **Leave unset** — production uses same-origin `/api` (Vercel serverless proxy to Railway). |
-| `RAILWAY_API_URL` | Optional on Vercel — backend URL for the proxy (defaults to your Railway deploy). |
+| `RAILWAY_API_URL` | Optional on Vercel — backend URL for Edge middleware proxy (defaults to your Railway deploy). |
 | `VITE_GOOGLE_CLIENT_ID` | Your Google OAuth client ID (optional) |
 
 5. Deploy → open your Vercel URL → **Try the demo account**.
