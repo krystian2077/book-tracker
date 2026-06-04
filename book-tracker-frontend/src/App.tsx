@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
 import { Spinner } from '@/components/ui'
 import { useAuth } from '@/features/auth/useAuth'
 import { AuthPage } from '@/features/auth/AuthPage'
@@ -20,18 +21,26 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <AuthPage />
+    return (
+      <>
+        <AuthPage />
+        <Analytics />
+      </>
+    )
   }
 
   return (
-    <Routes>
-      <Route element={<AppLayout />}>
-        <Route index element={<DashboardPage />} />
-        <Route path="library" element={<LibraryPage />} />
-        <Route path="add" element={<AddBookPage />} />
-        <Route path="books/:id" element={<BookDetailsPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <>
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="library" element={<LibraryPage />} />
+          <Route path="add" element={<AddBookPage />} />
+          <Route path="books/:id" element={<BookDetailsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+      <Analytics />
+    </>
   )
 }
